@@ -73,6 +73,7 @@ class RequestLogMiddleware(MiddlewareMixin):
             body.update(dict(request.GET))
         else:
             body.update(dict(request.POST))
+        local.__dict__.clear()  # used in production multi-threading mode!
         local.time = time_now()
         local.func = request.path.replace("/currency_backend/", "")
         local.method = request.method
