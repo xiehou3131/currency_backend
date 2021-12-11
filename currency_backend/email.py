@@ -43,5 +43,5 @@ def send_mail(mail_to, mail_from, subject, text, files, server="localhost"):
 if __name__ == '__main__':
     # Example:
     # 这里可以任意定制发送者的邮箱地址
-    send_mail(['Naibo <naibowang@foxmail.com>'], 'Currency Market <validator@currency.naibo.wang>', 'Hello Python!',
+    send_mail(['Naibo <naibowang@foxmail.com>'], 'Currency Market <validator@currencymarket.naibo.wang>', 'Hello Python!',
               'Say hello to Python! :)', [])

@@ -301,7 +301,7 @@ def getCaptcha(request):
             cache.set(request.POST['username'] + "_test", 1, wt * 5)  # 设置验证码验证次数
             captcha = "".join(random.sample([x for x in string.digits], 6))
             cache.set(request.POST['username'], captcha, wt * 5)
-            send_mail([request.POST['username']], 'Currency Market <validator@currency.naibo.wang>',
+            send_mail([request.POST['username']], 'Currency Market <validator@currencymarket.naibo.wang>',
                       'Captcha from Currency Market', """<html>
   <head></head>
   <body>

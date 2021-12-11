@@ -27,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-d7opbi5h3j5hyig378q&z!mi$m^mo%u)wog*8w%^wd=60@o*xk'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -142,16 +142,16 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440000  #上传数据大小，也改成了25M
 # SESSION_COOKIE_SAMESITE = 'none'
 # CSRF_COOKIE_SAMESITE = 'none'
 # 以下两行为是否为https链接，在标准配置中，如果前后台地址不同，则设置跨域必须加上这行
-# SESSION_COOKIE_SECURE = True
-# CSRF_COOKIE_SECURE = True
-# SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-# SECURE_SSL_REDIRECT = True # 将所有非SSL请求永久重定向到SSL
-# SESSION_COOKIE_SECURE = True # 仅通过https传输cookie
-# CSRF_COOKIE_SECURE = True # 仅通过https传输cookie
-# SECURE_HSTS_INCLUDE_SUBDOMAINS = True # 严格要求使用https协议传输
-# SECURE_HSTS_PRELOAD = True # HSTS为
-# SECURE_HSTS_SECONDS = 60
-# SECURE_CONTENT_TYPE_NOSNIFF = True # 防止浏览器猜测资产的内容类型
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = True # 将所有非SSL请求永久重定向到SSL
+SESSION_COOKIE_SECURE = True # 仅通过https传输cookie
+CSRF_COOKIE_SECURE = True # 仅通过https传输cookie
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True # 严格要求使用https协议传输
+SECURE_HSTS_PRELOAD = True # HSTS为
+SECURE_HSTS_SECONDS = 60
+SECURE_CONTENT_TYPE_NOSNIFF = True # 防止浏览器猜测资产的内容类型
 
 CORS_ORIGIN_WHITELIST = ()
  
