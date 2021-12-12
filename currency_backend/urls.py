@@ -16,7 +16,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from . import view, scheme
+from . import view, scheme, rate
 
 
 def path_c(pt, func):
@@ -25,7 +25,7 @@ def path_c(pt, func):
 
 urlpatterns = [
     path('', view.hello),
-path('', view.hello),
+    path('', view.hello),
     path_c('', view.hello),
     path_c('login', view.login),
     path_c('getIdentity', view.getIdentity),
@@ -40,7 +40,13 @@ path('', view.hello),
     path_c('changePassword', view.changePassword),
     path_c('getCaptcha', view.getCaptcha),
     path_c('uploadFile', view.uploadFile),
-    path_c('getSchemeMenu', scheme.getSchemeMenu)
+    path_c('getSchemeMenu', scheme.getSchemeMenu),
+    path_c('getSchemeOverview', scheme.getSchemeOverview),
+    path_c('addScheme', scheme.addScheme),
+    path_c('getCoinInfo', rate.get_coin_info),
+    path_c('getSchemeChart', scheme.getSchemeChart),
+    path_c('getSchemeAccount', scheme.getSchemeAccount),
+    path_c('editSchemeDesc', scheme.editSchemeDesc),
 ]
 
 handler404 = view.S04

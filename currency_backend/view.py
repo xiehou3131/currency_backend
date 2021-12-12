@@ -12,7 +12,7 @@ from .dbconfig import *
 from bson import json_util
 from .tools import *
 from django.core.cache import cache
-from .email import send_mail
+from .emails import send_mail
 
 
 def hello(request):
@@ -35,7 +35,7 @@ def check_login(f):
         if request.session.get('is_login') == '1':
             return f(request, *arg, **kwargs)
         else:
-            return HttpResponse(json.dumps({"status": 302, "msg": "Not logged in!"}),
+            return HttpResponse(json.dumps({"status": 302, "info": "Not logged in!"}),
                                 content_type="application/json")
 
     return inner
@@ -255,7 +255,7 @@ def register(request):
                 user = {"username": request.POST['username'], "pswd": decrypt_message(request.POST['pass']),
                         "role": "user",
                         "status": True, "register_time": datetime.utcnow(), "nickname": request.POST['nickname'],
-                        "profile": "user.png", "schemes": {}}
+                        "profile": "user.png", "schemes": []}
                 myauths.insert_one(user)
                 cache.delete(request.POST['username'])  # 清除验证码
                 cache.delete(request.POST['username'] + "_test")

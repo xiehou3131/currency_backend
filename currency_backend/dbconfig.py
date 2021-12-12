@@ -7,7 +7,7 @@ myclient = pymongo.MongoClient('mongodb://currency:Qw123456789@localhost:27017/'
 mydb = myclient['currency']
 myauths = mydb["userInfo"]
 logs = mydb["logs"]
-
+coin = mydb["coinInfo"]
 # {
 #   $project: {
 #     _id: 1,
