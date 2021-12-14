@@ -1,115 +1,104 @@
+import datetime
 import json
 import re
-import pymongo
-from bson import Regex
+import random
+import time
 
-myclient = pymongo.MongoClient('mongodb://currency:Qw123456789@localhost:27017/',connect=False)
+import pymongo
+import pytz
+from bson import Regex
+from dateutil.relativedelta import relativedelta
+
+from currency_backend.tools import time_now
+
+myclient = pymongo.MongoClient('mongodb://currency:Qw123456789@localhost:27017/', connect=False)
 mydb = myclient['currency']
 myauths = mydb["userInfo"]
 logs = mydb["logs"]
 coin = mydb["coinInfo"]
-# {
-#   $project: {
-#     _id: 1,
-#     product: 1,
-#     money: 1,
-#     name: 1
-#   }
-# }
-# https://blog.csdn.net/u011113654/article/details/80353013
+test = mydb["test"]
 
-# # 展示了如何多表查询并提取指定字段
-# models_with_info = models.aggregate(
-#     [{'$lookup': {'from': "auths", "localField": "author", "foreignField": "username", "as": "author_info"}},
-#      {'$unwind': {'path': '$author_info', 'preserveNullAndEmptyArrays': True}},
-#      {'$addFields': {'nickname': "$author_info.nickname"}},
-#      {'$project': {'author_info': 0}}
-#      ])
+if __name__ == '__main__':
+    # date = datetime.datetime.utcnow().replace(tzinfo=pytz.timezone('Asia/Shanghai'))
+    # datetime.datetime.utcnow()得到的是当前UTC的时间，如当前北京时间8点，则得到的是UTC的0点，如果用了replace，则认为这个0点是东八区的0点，那么插入到数据库中记录的UTC的时间就是前一天的16点
+    date = datetime.datetime.utcnow()
+    # print(date.isoformat())
+    # next_day = date + datetime.timedelta(days=1) # 日期加1天
+    # last_day = date + datetime.timedelta(days=-1)  # 日期减1天
+    startDate = date - relativedelta(years=3) # 添加3年的数据
+    # startDate = date - relativedelta(days=3)  # 添加3年的数据
+    # test.insert_one({"time": date, "value": random.uniform(0, 100000)})
+    # print(date_format,next_day,last_day)
 
-# 生成简单查询条件
-def getQueryCondition(queryConditions):
-    conditions = []
-    for fieldInfo in queryConditions:
-        if fieldInfo["type"] == 'text' or fieldInfo["type"] == 'array' or fieldInfo["type"] == 'datetime':
-            pattern = re.compile(r'.*' + fieldInfo['query'] + '.*', re.I)
-            regex = Regex.from_native(pattern)
-            regex.flags ^= re.UNICODE
-            conditions.append({fieldInfo["name"]: regex})
-        elif fieldInfo["type"] == 'number':
-            if fieldInfo["query"] != "":
-                try:
-                    num = float(fieldInfo["query"])
-                    conditions.append({fieldInfo["name"]: {"$eq": num}})
-                except:
-                    conditions.append({fieldInfo["name"]: {"$eq": -99999}})
-            else:
-                conditions.append({fieldInfo["name"]: {"$gte": -99999}})
-    return {"$or": conditions}
-
-# 【Python有坑系列】函数默认参数_小白兔de窝-CSDN博客
-# https://blog.csdn.net/ztf312/article/details/84998137
-# 根据不同条件查询
-def queryTable(table, request, additionalColumns={"_id": 0}, additionalConditions=None, aggregationConditions=False):
-    if additionalConditions is None:
-        additionalConditions = []
-    pageNum = int(request.POST["pageNum"])
-    pageSize = int(request.POST["pageSize"])
-    queryConditions = json.loads(request.POST["fields"])
-    conditions = getQueryCondition(queryConditions)
-    if 'advance' in request.POST and request.POST['advance'] == '1':
-        queryFields = json.loads(request.POST["queryFields"])
-        multiConditions = json.loads(request.POST["multiConditions"])
-        for field in queryFields:
-            if field['type'] == 'datetime':
-                datetime_from = multiConditions[field['value'] + "_from"]
-                if datetime_from != '':
-                    additionalConditions.append({field['value']: {"$gte":  datetime_from.replace("T"," ")}})
-                datetime_to = multiConditions[field['value'] + "_to"]
-                if datetime_to != '':
-                    additionalConditions.append({field['value']: {"$lte": datetime_to.replace("T", " ")}})
-            elif field['type'] == 'number':
-                try:
-                    num_from = float(multiConditions[field['value'] + "_from"])
-                    additionalConditions.append({field['value']:{"$gte": num_from}})
-                except:
-                    pass
-                try:
-                    num_to = float(multiConditions[field['value'] + "_to"])
-                    additionalConditions.append({field['value']:{"$lte": num_to}})
-                except:
-                    pass
-            else:
-                query_t = multiConditions[field['value']]
-                if query_t == '':
-                    continue
-                pattern_t = re.compile(r'.*' + query_t + '.*', re.I)
-                regex_t = Regex.from_native(pattern_t)
-                regex_t.flags ^= re.UNICODE
-                additionalConditions.append({field['value']: regex_t})
-    # CTRL + ALT + SHIFT + J同时选中相同单词
-    if aggregationConditions:
-        aggregationConditionsT = aggregationConditions.copy()
-        if additionalConditions:
-            additionalConditions.append(conditions)
-            conditions = {"$and": additionalConditions}
-        aggregationConditionsT.append({'$match': conditions})
-        total = len(table.aggregate(aggregationConditionsT)._CommandCursor__data)
-        # 注意顺序，应该先sort再skip和limit！！！
-        aggregationConditionsT.append({"$sort": {request.POST["sortProp"]: int(request.POST["order"])}})
-        aggregationConditionsT.append({'$skip': pageSize * (pageNum - 1)})
-        aggregationConditionsT.append({"$limit": pageSize})
-        result = list(table.aggregate(aggregationConditionsT))
-    else:
-        # 如果有额外的查询条件，使用and语句加入条件
-        if additionalConditions:
-            additionalConditions.append(conditions)
-            query = table.find({"$and": additionalConditions}, additionalColumns)
-        # 没有额外的查询条件，直接查询
-        else:
-            query = table.find(conditions, additionalColumns)
-        sortCondition = [(request.POST["sortProp"], int(request.POST["order"]))]
-        # .collation({"locale": "en"})不区分大小写
-        query.sort(sortCondition).skip(pageSize * (pageNum - 1)).limit(pageSize).collation({"locale": "en"})
-        result = list(query)
-        total = query.count()
-    return result, total
+    # diff = next_day - last_day
+    # day2 = datetime.datetime.strptime("2021-12-13 06:00:00", "%Y-%m-%d %H:%M:%S") # 时间差计算是统一按照UTC时间算的
+    # diff = date - day2
+    # print(diff.days)
+    # print(date - endDate)
+    i = 0
+    dates = []
+    while (date - startDate).days != -1:  # 插入数据到指定日期，比如一个月之前
+        print(i, startDate, date - startDate, random.uniform(0, 100000))
+        dates.append({"time": startDate, "value": 140000 + random.uniform(-10000, 10000)})
+        startDate = startDate + datetime.timedelta(hours=2)
+        # time.sleep(0.1)
+        i += 1
+    myauths.update_one({"username": "naibowang@comp.nus.edu.sg"},
+                       {'$set': {"schemes.$[item].propertyLogs": dates}},
+                       upsert=True,
+                       array_filters=[
+                           {"item.id": 1},  # 往第一套方案的properties的数组里添加该数组
+                       ]
+                       )  # 往第一套方案的properties的数组里添加该对象
+    # frequency = 12
+    # timeRange = 730
+    # count = 1
+    # date = datetime.datetime.utcnow()
+    # if timeRange<27:
+    #     startDate = date - relativedelta(days=timeRange)
+    # elif timeRange <181: # 月份时间差计算
+    #     startDate = date - relativedelta(months=timeRange/30)
+    # else: #年份时间差计算
+    #     startDate = date - relativedelta(years=timeRange / 365)
+    # count = (date - startDate).days
+    #
+    # schemeChartLogs = list(myauths.find({"username": "naibowang@comp.nus.edu.sg"},
+    #                                         {"schemes.propertyLogs": {
+    #                                             "$slice": [-1*count * frequency-100, count * frequency+100] # 在原来的基础上多拿100条数据，以防万一
+    #                                         }, "username": 1, "schemes.id": 1, "schemes.name": 1, "_id": 0}))[0]  # 得到用户所有方案的propertyLogs，按数量算好的
+    # propertyLogs = schemeChartLogs["schemes"][0]["propertyLogs"]
+    # propertyLogs.reverse()
+    # outputLogs = []
+    #
+    # # 如果请求的时间点正好是日志记录的时间点，则会多出一条数据，即如果日志是11:12:14记录的，那么在11:12:14访问接口就会多出一条数据，因为log["time"]
+    # # startDate = propertyLogs[0]["time"] -relativedelta(days=2)
+    # print(startDate)
+    # # t = datetime.datetime.strptime("2021-12-13 06:13:00", "%Y-%m-%d %H:%M:%S") - datetime.datetime.strptime("2021-12-12 06:13:00", "%Y-%m-%d %H:%M:%S")
+    # # print(t,t.days)
+    #
+    # dateCursor = "" # 数据游标
+    # start = False # 是否已经开始加入列表
+    # for log in propertyLogs:
+    #     if (log["time"] - startDate).days >=0:
+    #         # if not start:
+    #         #     outputLogs.append(propertyLogs[index-1])
+    #         if timeRange <= 31: # 一个月之内，全部打印
+    #             outputLogs.append(log)
+    #         elif timeRange <400: # 超过一个月少于两年，每隔一天打印一次数据
+    #             if dateCursor != log["time"].strftime("%Y-%m-%d"):
+    #                 outputLogs.append(log)
+    #                 dateCursor = log["time"].strftime("%Y-%m-%d")
+    #         else:# 两年及以上，每3天打印一次记录
+    #             if dateCursor != log["time"].strftime("%Y-%m-%d"):
+    #                 dateCursor = log["time"].strftime("%Y-%m-%d")
+    #                 if (log["time"] - startDate).days % 3 == 0:
+    #                     outputLogs.append(log)
+    #     else:
+    #         if propertyLogs[0]["time"].strftime("%H:%M:%S") != date.strftime("%H:%M:%S"):
+    #             outputLogs.append(log) # 把最后一条数据拿到，因为算过去24小时的变化应该有25条数据，除非当前查询时间和最后一条日志时间的时分秒完全相同
+    #         break;
+    #
+    # outputLogs.reverse() # 时间升序排序
+    #
+    # print(len(outputLogs),outputLogs[0],outputLogs[-1])
+    # print(outputLogs)

@@ -42,7 +42,7 @@ def json_wrap(res, no_log=False, no_response=False, no_request=False):
 
 
 def time_now():
-    utc_now = datetime.utcnow().replace(tzinfo=timezone.utc)
+    utc_now = datetime.utcnow()
     # obj = utc_now.astimezone(timezone(timedelta(hours=8)))
     obj = utc_now
     obj = datetime(obj.year, obj.month, obj.day, obj.hour, obj.minute, obj.second, obj.microsecond)
