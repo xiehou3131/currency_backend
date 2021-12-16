@@ -26,7 +26,7 @@ if __name__ == '__main__':
     # next_day = date + datetime.timedelta(days=1) # 日期加1天
     # last_day = date + datetime.timedelta(days=-1)  # 日期减1天
     startDate = date - relativedelta(years=3) # 添加3年的数据
-    # startDate = date - relativedelta(days=3)  # 添加3年的数据
+    startDate = date - relativedelta(days=3)  # 添加3年的数据
     # test.insert_one({"time": date, "value": random.uniform(0, 100000)})
     # print(date_format,next_day,last_day)
 

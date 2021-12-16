@@ -53,6 +53,11 @@ def check_manager(f):
     return inner
 
 
+def testDelay(request):
+    time.sleep(3)
+    return json_wrap({"status":200,"new_log":True},no_log=True);
+
+
 # 查找参数是否在请求中
 def check_parameters(paras):
     def _check_parameter(f):
@@ -93,15 +98,15 @@ def getUserInfo(request):
     return json_wrap({"status": 200, "data": list(result)[0]}, no_response=True)
 
 
-@check_parameters(["query", "pageNum", "pageSize", "fields", "sortProp", "order"])
-def getUserList(request):
-    if request.session.get('role') == 'manager':
-        result, total = queryTable(myauths, request, additionalColumns={"pswd": 0, "_id": 0})
-        return json_wrap({"status": 200, "data": list(result), "total": total}, no_response=True)
-    else:
-        return HttpResponse(
-            json.dumps({"status": 303, "msg": "Sorry, you don't have permission to check this list!"}),
-            content_type="application/json")
+# @check_parameters(["query", "pageNum", "pageSize", "fields", "sortProp", "order"])
+# def getUserList(request):
+#     if request.session.get('role') == 'manager':
+#         result, total = queryTable(myauths, request, additionalColumns={"pswd": 0, "_id": 0})
+#         return json_wrap({"status": 200, "data": list(result), "total": total}, no_response=True)
+#     else:
+#         return HttpResponse(
+#             json.dumps({"status": 303, "msg": "Sorry, you don't have permission to check this list!"}),
+#             content_type="application/json")
 
 
 @check_login
@@ -170,8 +175,9 @@ def resetPasswordUser(request):
                 cache.delete(request.POST['username'])  # 清除验证码
                 cache.delete(request.POST['username'] + "_test")
                 cache.delete(request.POST['username'] + "_last")
-                return HttpResponse(json.dumps({"status": 200, "msg": "Password reset success, please log in!"}),
-                                    content_type="application/json")
+                return NoRequestLogHTTPResponse(
+                    json.dumps({"status": 200, "msg": "Password reset success, please log in!"}),
+                    content_type="application/json")
             else:
                 # 注意这里是==则键不存在的时候也照样返回false，如果是>=5则键不存在时会报错，因为会比较NoneType和Int
                 if cache.get(request.POST['username'] + "_test") >= 5:
