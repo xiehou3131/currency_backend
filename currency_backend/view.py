@@ -52,12 +52,6 @@ def check_manager(f):
 
     return inner
 
-
-def testDelay(request):
-    time.sleep(3)
-    return json_wrap({"status":200,"new_log":True},no_log=True);
-
-
 # 查找参数是否在请求中
 def check_parameters(paras):
     def _check_parameter(f):

@@ -113,54 +113,90 @@ def getSchemeAccount(request):
 
 
 @check_login
-@check_parameters(["info", "pagination"])
-def getSchemeDepositLogs(request):
+@check_parameters(["type"])
+def waitSchemeLogs(request):
+    time.sleep(3)
+    return json_wrap({"status": 200, "new_log": True}, no_log=True)
+
+
+@check_login
+@check_parameters(["params"])
+def withdrawCoin(request):
+    output = {"status": 200, "msg": "Withdraw request has been successfully submitted and being processed now!"}
+    params = json.loads(request.POST["params"])
+    params["username"] = request.session["username"]
+    print(params)
+    try:
+        # 请求李远服务器的等待时间最多只有10秒，超出后必须返回数据，哪怕没有最新的log，注意10秒不是那边服务器的处理时间，是从发送请求到处理请求全部的等待时间，所以如果后台处理时间为1秒，则整个过程至少需要3秒
+        # r = requests.get('http://currency.naibo.wang:8081/currency_backend/testDelay?type='+type, timeout=10)
+        # x = requests.post('http://currency.naibo.wang:8081/currency_backend/withdraw', data=params,timeout=10)
+        time.sleep(1)
+    except requests.exceptions.Timeout as e:
+        output["status"] = 500
+        output["msg"] = "Sorry, we cannot process your withdraw request now!"
+    return json_wrap(output)
+
+
+@check_login
+@check_parameters(["info", "pagination", "type"])
+def getSchemeLogs(request):
     info = json.loads(request.POST["info"])
     pagination = json.loads(request.POST["pagination"])
+    type = request.POST["type"]
+    temp = {}
     output = {}
     if pagination["firstInvoke"]:
         try:
             # 请求李远服务器的等待时间最多只有10秒，超出后必须返回数据，哪怕没有最新的log，注意10秒不是那边服务器的处理时间，是从发送请求到处理请求全部的等待时间，所以如果后台处理时间为1秒，则整个过程至少需要3秒
-            # r = requests.get('http://currency.naibo.wang:8081/currency_backend/testDelay', timeout=10)
+            # r = requests.get('http://currency.naibo.wang:8081/currency_backend/testDelay?type='+type, timeout=10)
             time.sleep(1)
         except requests.exceptions.Timeout as e:
             output["invokeStatus"] = "timeout"
         # time.sleep(3)
-    schemeChartLogs = list(myauths.find({"username": request.session["username"]},
-                                        {"username": 1,
-                                         "schemes.chargeLogs": 1,
-                                         "schemes.id": 1, "schemes.name": 1, "_id": 0}))[0]
-
-    for scheme in schemeChartLogs['schemes']:  # 输出指定scheme的信息
+    if type == "deposit":
+        schemeLogs = list(myauths.find({"username": request.session["username"]},
+                                       {"username": 1,
+                                        "schemes.chargeLogs": 1,
+                                        "schemes.id": 1, "schemes.name": 1, "_id": 0}))[0]
+    else:
+        schemeLogs = list(myauths.find({"username": request.session["username"]},
+                                       {"username": 1,
+                                        "schemes.withdrawLogs": 1,
+                                        "schemes.id": 1, "schemes.name": 1, "_id": 0}))[0]
+    for scheme in schemeLogs['schemes']:  # 输出指定scheme的信息
         if scheme["id"] == float(info["id"]):
-            output = scheme
-    output["chargeLogs"].reverse()  # 倒序排序
+            temp = scheme
 
+    if type == "deposit":
+        output["logs"] = temp["chargeLogs"]
+    else:
+        output["logs"] = temp["withdrawLogs"]
+    output["logs"].reverse()  # 倒序排序
     if len(pagination["showCurrent"]) > 0:  # 只显示当前币种
-        output["chargeLogs"] = list(filter(lambda x: x["coin"] == info["coin"], output["chargeLogs"]))
-    output["rows"] = len(output["chargeLogs"])
-    output["chargeLogs"] = output["chargeLogs"][
-                           (pagination["currentPage"] - 1) * pagination["perPage"]:pagination["currentPage"] *
-                                                                                   pagination["perPage"]]
+        output["logs"] = list(filter(lambda x: x["coin"] == info["coin"], output["logs"]))
+    output["rows"] = len(output["logs"])
+    output["logs"] = output["logs"][
+                     (pagination["currentPage"] - 1) * pagination["perPage"]:pagination["currentPage"] *
+                                                                             pagination["perPage"]]
     # print(pagination)
     return json_wrap({"status": 200, "data": output}, no_log=True)
 
 
 @check_login
-@check_parameters(["chain", "coin"])
+@check_parameters(["chain", "coin", "id"])
 def waitGetSchemeAddress(request):
     output = {}
     # print(request.POST["id"], request.POST["chain"],request.session["username"])
     query = list(myauths.find({"username": request.session["username"],
-                            "schemes": {
-                                "$elemMatch": {
-                                    "chainAddresses.name": request.POST["chain"],  # 嵌套数组写法
-                                    "id": float(request.POST["id"]),
-                                }
-                            }}, {"schemes.chainAddresses": 1, "username": 1, "schemes.id": 1, "_id": 0}))
+                               "schemes": {
+                                   "$elemMatch": {
+                                       "chainAddresses.name": request.POST["chain"],  # 嵌套数组写法
+                                       "id": float(request.POST["id"]),
+                                   }
+                               }}, {"schemes.chainAddresses": 1, "username": 1, "schemes.id": 1, "_id": 0}))
     # 查询id方案中用户的chainAddresses数组中现在是否存在name为chain这个对象，不存在返回空数组
     # print(query)
-    if len(query) == 0: # 如果账户已经有这个chain的address了，就不需要向后台查询了，否则向后台查询
+    if len(query) == 0:  # 如果账户已经有这个chain的address了，就不需要向后台查询了，否则向后台查询
         try:
             # r = requests.get('http://currency.naibo.wang:8081/currency_backend/testDelay', timeout=10)
             time.sleep(1)
@@ -169,10 +205,95 @@ def waitGetSchemeAddress(request):
             output["invokeStatus"] = "timeout"
             output["address"] = "Sorry, we cannot get your chain address now"
     else:
-        chainAddresses = list(filter(lambda x: x["id"] == float(request.POST["id"]) , query[0]["schemes"]))[0]["chainAddresses"]
-        output["address"] = list(filter(lambda x: x["name"] == request.POST["chain"] , chainAddresses))[0]["address"]
+        chainAddresses = list(filter(lambda x: x["id"] == float(request.POST["id"]), query[0]["schemes"]))[0][
+            "chainAddresses"]
+        output["address"] = list(filter(lambda x: x["name"] == request.POST["chain"], chainAddresses))[0]["address"]
 
     return json_wrap({"status": 200, "data": output}, no_log=True)
+
+
+@check_login
+@check_parameters(["chain", "coin", "id", "tag", "address"])
+def addAddressBook(request):
+    output = {"status": 200, "msg": "Address has been successfully added!"}
+    # TODO 先查币存不存在，不存在添加币种；再查链存不存在，不存在添加链；最后再添加book
+    query = list(myauths.find({"username": request.session["username"],
+                               "schemes": {  # 多级嵌套写法！
+                                   "$elemMatch": {
+                                       "properties": {
+                                           "$elemMatch": {
+                                               "symbol": request.POST["coin"],
+                                               "addresses.chain": request.POST["chain"],
+                                           }
+                                       },
+                                       "id": float(request.POST["id"]),
+                                   }
+                               }}, {"username": 1, "schemes.id": 1, "_id": 0}))
+    # 查询id方案中用户的chainAddresses数组中现在是否存在name为chain这个对象，不存在返回空数组
+    if len(query) == 0:  # 如果查到了这个chain的存在，则直接添加，否则查币和链存不存在,不存在返回错误，存在的话向用户数据里添加信息
+        queryChain = list(coin.find({"symbol": request.POST["coin"],
+                                     "supportChains": {  # 多级嵌套写法！
+                                         "$elemMatch": {
+                                             "name": request.POST["chain"],
+                                         }
+                                     }}, {"_id": 0}))
+        if len(queryChain) == 0:  # 找不到post过来的币名对应的链名
+            output = {"status": 500, "msg": "Sorry, we cannot find specified coin or chain info!"}
+            return json_wrap(output)
+        else:
+            queryCoin = list(myauths.find({"username": request.session["username"],
+                                           "schemes": {  # 多级嵌套写法！
+                                               "$elemMatch": {
+                                                   "properties.symbol": request.POST["coin"],
+                                                   "id": float(request.POST["id"]),
+                                               }
+                                           }}, {"username": 1, "schemes.id": 1, "_id": 0}))
+            if len(queryCoin) == 0:  # 如果币也不存在,添加币
+                myauths.update_one({"username": request.session['username']},
+                                   {'$addToSet': {"schemes.$[item].properties":
+                                                      {"symbol": request.POST["coin"], "addresses": [{
+                                                          "chain": request.POST["chain"],
+                                                          "amount": 0.0,
+                                                          "update_time": time_now(),
+                                                          "withdrawAmount": 0.0,
+                                                          "books": [{"tag": request.POST["tag"],
+                                                                     "address": request.POST["address"]}]
+                                                      }]}
+
+                                                  }},
+                                   upsert=True,
+                                   array_filters=[
+                                       {"item.id": float(request.POST["id"])},
+                                   ]
+                                   )  # 用addToSet以便避免添加重复数据
+            else:  # 币存在但是链不存在
+                myauths.update_one({"username": request.session['username']},
+                                   {'$addToSet': {"schemes.$[item].properties.$[property].addresses": {
+                                       "chain": request.POST["chain"],
+                                       "amount": 0.0,
+                                       "update_time": time_now(),
+                                       "withdrawAmount": 0.0,
+                                       "books": [{"tag": request.POST["tag"], "address": request.POST["address"]}]
+                                   }
+                                   }},
+                                   upsert=True,
+                                   array_filters=[
+                                       {"item.id": float(request.POST["id"])},
+                                       {"property.symbol": request.POST["coin"]},
+                                   ]
+                                   )  # 用addToSet以便避免添加重复数据
+    else:  # 查到了chain，直接添加
+        myauths.update_one({"username": request.session['username']},
+                           {'$addToSet': {"schemes.$[item].properties.$[property].addresses.$[address].books": {
+                               "tag": request.POST["tag"], "address": request.POST["address"]}}},
+                           upsert=True,
+                           array_filters=[
+                               {"item.id": float(request.POST["id"])},
+                               {"property.symbol": request.POST["coin"]},
+                               {"address.chain": request.POST["chain"]},
+                           ]
+                           )  # 用addToSet以便避免添加重复数据
+    return json_wrap(output)
 
 
 @check_login
@@ -197,6 +318,8 @@ def addScheme(request):
                     {
                         "chain": "BEP20(BSC)",
                         "amount": 0.0,
+                        "withdrawAmount": 0.0,  # 今天已经占用的提币额度
+                        "books": [],  # 记录的地址簿
                         "update_time": time_now()
                     }
                 ]
@@ -245,12 +368,6 @@ def editSchemeDesc(request):
         {"status": 200, "msg": "Scheme Descrption has been successfully modified!", "data": {"id": new_scheme_name}},
         no_response=True)
 
+
 if __name__ == '__main__':
-    query = list(myauths.find({"username": "naibowang@comp.nus.edu.sg",
-                            "schemes": {
-                                "$elemMatch": {
-                                    "chainAddresses.name": "BEP20 (BSC)",  # 嵌套数组写法
-                                    "id": 1,
-                                }
-                            }}, {"schemes.chainAddresses": 1, "username": 1, "schemes.id": 1, "_id": 0}))
-    print(query)
+    pass

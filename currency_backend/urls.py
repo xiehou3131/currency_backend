@@ -46,10 +46,12 @@ urlpatterns = [
     path_c('getCoinInfo', rate.get_coin_info),
     path_c('getSchemeChart', scheme.getSchemeChart),
     path_c('getSchemeAccount', scheme.getSchemeAccount),
-    path_c('getSchemeDepositLogs', scheme.getSchemeDepositLogs),
+    path_c('getSchemeLogs', scheme.getSchemeLogs),
     path_c('waitGetSchemeAddress', scheme.waitGetSchemeAddress),
     path_c('editSchemeDesc', scheme.editSchemeDesc),
-    path_c('waitTestDelay', view.testDelay),
+    path_c('waitSchemeLogs', scheme.waitSchemeLogs),
+    path_c('withdrawCoin', scheme.withdrawCoin),
+    path_c('addAddressBook', scheme.addAddressBook),
 ]
 
 handler404 = view.S04

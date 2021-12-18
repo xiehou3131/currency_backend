@@ -18,6 +18,8 @@ logs = mydb["logs"]
 coin = mydb["coinInfo"]
 test = mydb["test"]
 
+
+
 if __name__ == '__main__':
     # date = datetime.datetime.utcnow().replace(tzinfo=pytz.timezone('Asia/Shanghai'))
     # datetime.datetime.utcnow()得到的是当前UTC的时间，如当前北京时间8点，则得到的是UTC的0点，如果用了replace，则认为这个0点是东八区的0点，那么插入到数据库中记录的UTC的时间就是前一天的16点
