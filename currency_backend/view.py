@@ -290,6 +290,10 @@ def getCaptcha(request):
             content_type="application/json")
     result = myauths.find({"username": request.POST['username']})
     r = list(result)
+    if request.POST['reset'] == '1' and len(r) == 0:
+        return NoRequestLogHTTPResponse(
+            json.dumps({"status": 210, "msg": "Sorry, we cannot find the specified email address!"}),
+            content_type="application/json")
     if len(r) == 0 or request.POST['reset'] == '1':  # 没找到用户邮箱或者找到了但是用户是在重置密码, 不管前端格式如何，后台得到的永远都是字符串！
         if cache.has_key(request.POST['username'] + "_last"):  # 如果在60秒以内想要再次请求验证码，再等等
             return NoRequestLogHTTPResponse(
