@@ -1,3 +1,4 @@
+import copy
 import random
 import string
 
@@ -12,6 +13,44 @@ from django.core.cache import cache
 import datetime
 from .view import check_login, check_parameters
 import requests
+
+scheme_template = {
+    "id": 0,
+    "name": 0,
+    "create_time": "",
+    "investStatus":"normal",
+    "properties": [
+        {
+            "symbol": "USDT",
+            "addresses": [
+                {
+                    "chain": "BEP20 (BSC)",
+                    "amount": 0.0,
+                    "withdrawAmount": 0.0,  # 今天已经占用的提币额度
+                    "books": [],  # 记录的地址簿
+                    "update_time": ""
+                }
+            ]
+        }
+    ],
+    "chainAddresses": [
+    ],
+    "propertyLogs": [
+    ],
+    "chargeLogs": [
+    ],
+    "withdrawLogs": [
+    ],
+    "investPlans": [{
+        "create_time": "",
+        "contents": [
+            {
+                "coin": "USDT",
+                "percentage": 100.0
+            }
+        ]
+    }]
+}
 
 
 @check_login
@@ -32,6 +71,59 @@ def getSchemeOverview(request):
                                "schemes.propertyLogs": {"$slice": [-20, 20]}, "schemes.properties": 1, "_id": 0}))
     return json_wrap({"status": 200, "data": menus[0]}, no_log=True)
 
+@check_login
+@check_parameters(["id"])
+def getInvestPlan(request):
+    userSchemeData = list(myauths.find({"username": request.session["username"]},
+                              {"schemes.id": 1, "username": 1, "schemes.name": 1,
+                               "schemes.investPlans": {"$slice": [-1, 1]}, "_id": 0}))
+    investPlan = list(filter(lambda x: x["id"] == float(request.POST["id"]), userSchemeData[0]["schemes"]))[0][
+        "investPlans"][0]
+    # print(investPlan)
+    return json_wrap({"status": 200, "data": investPlan}, no_log=True)
+
+@check_login
+@check_parameters(["plan"])
+def newInvestPlan(request):
+    plan = json.loads(request.POST["plan"])
+    userSchemeData = list(myauths.find({"username": request.session["username"]},
+                                       {"schemes.id": 1, "username": 1, "schemes.name": 1,
+                                        "schemes.investStatus": 1}))
+    investStatus = list(filter(lambda x: x["id"] == float(request.POST["id"]), userSchemeData[0]["schemes"]))[0][
+        "investStatus"]
+    if investStatus != "normal":
+        return json_wrap({"status": 500,
+                          "msg": "We are now processing your last invest plan, please wait until it is done."})
+    totalPercentage = 0
+    print(plan)
+    for coinInfo in plan:
+        try:
+            coinInfo["percentage"] = float(coinInfo["percentage"])
+            if coinInfo["percentage"] < 0 or coinInfo["percentage"] >100:
+                return json_wrap({"status": 500,
+                                  "msg": "Parameter error, percentage cannot be smaller than 0 or bigger than 100!"})
+            else:
+                totalPercentage += coinInfo["percentage"]
+        except:
+            return json_wrap({"status": 500,
+                              "msg": "Parameter error, percentage is not a float!"})
+        theCoin = list(coin.find({"symbol": coinInfo["coin"]}))
+        if len(theCoin) == 0:
+            return json_wrap({"status": 500,
+                              "msg": "Sorry, we cannot find the specified coin %s!" % coinInfo["coin"]})
+    if totalPercentage!= 100:
+        return json_wrap({"status": 500,
+                          "msg": "Parameter error, percentages do not add up to 100!"})
+
+    myauths.update_one({"username": request.session['username']},
+                       {'$addToSet': {"schemes.$[item].investPlans": {"create_time":time_now(),"contents":plan}
+                                      },"$set":{"schemes.$[item].investStatus":"processing"}},
+                       upsert=True,
+                       array_filters=[
+                           {"item.id": float(request.POST["id"])},
+                       ]
+                       )
+    return json_wrap({"status": 200, "msg": "Invest Plan has been successfully submitted, please wait for our platform to adjust your account!"})
 
 @check_login
 @check_parameters(["id", 'range'])
@@ -90,7 +182,7 @@ def getSchemeAccount(request):
                                          "schemes.propertyLogs": {
                                              "$slice": [-20, 20]
                                          },
-                                         "schemes.id": 1, "schemes.name": 1, "_id": 0}))[
+                                         "schemes.id": 1,"schemes.investStatus":1, "schemes.name": 1, "_id": 0}))[
         0]  # 得到用户所有方案的propertyLogs，按数量算好的
     output = {}
     for scheme in schemeChartLogs['schemes']:  # 输出指定scheme的信息
@@ -216,7 +308,6 @@ def waitGetSchemeAddress(request):
 @check_parameters(["chain", "coin", "id", "tag", "address"])
 def addAddressBook(request):
     output = {"status": 200, "msg": "Address has been successfully added!"}
-    # TODO 先查币存不存在，不存在添加币种；再查链存不存在，不存在添加链；最后再添加book
     query = list(myauths.find({"username": request.session["username"],
                                "schemes": {  # 多级嵌套写法！
                                    "$elemMatch": {
@@ -249,17 +340,22 @@ def addAddressBook(request):
                                                }
                                            }}, {"username": 1, "schemes.id": 1, "_id": 0}))
             if len(queryCoin) == 0:  # 如果币也不存在,添加币
+                new_scheme = copy.deepcopy(scheme_template)
+                new_coin = new_scheme["properties"][0]
+                new_coin["symbol"] = request.POST["coin"]
+                new_coin["addresses"][0]["chain"] = request.POST["chain"]
+                new_coin["addresses"][0]["update_time"] = time_now()
+                new_coin["addresses"][0]["books"].append({"tag": request.POST["tag"],
+                                                          "address": request.POST["address"]})
                 myauths.update_one({"username": request.session['username']},
-                                   {'$addToSet': {"schemes.$[item].properties":
-                                                      {"symbol": request.POST["coin"], "addresses": [{
-                                                          "chain": request.POST["chain"],
-                                                          "amount": 0.0,
-                                                          "update_time": time_now(),
-                                                          "withdrawAmount": 0.0,
-                                                          "books": [{"tag": request.POST["tag"],
-                                                                     "address": request.POST["address"]}]
-                                                      }]}
-
+                                   {'$addToSet': {"schemes.$[item].properties": new_coin
+                                                  # {"symbol": request.POST["coin"], "addresses": [{
+                                                  #     "chain": request.POST["chain"],
+                                                  #     "amount": 0.0,
+                                                  #     "update_time": time_now(),
+                                                  #     "withdrawAmount": 0.0,
+                                                  #     "books": []
+                                                  # }]}
                                                   }},
                                    upsert=True,
                                    array_filters=[
@@ -267,15 +363,24 @@ def addAddressBook(request):
                                    ]
                                    )  # 用addToSet以便避免添加重复数据
             else:  # 币存在但是链不存在
+                new_scheme = copy.deepcopy(scheme_template)
+                new_chain = new_scheme["properties"][0]["addresses"][0]
+                new_chain["chain"] = request.POST["chain"]
+                new_chain["update_time"] = time_now()
+                new_chain["books"].append({"tag": request.POST["tag"],
+                                           "address": request.POST["address"]})
                 myauths.update_one({"username": request.session['username']},
-                                   {'$addToSet': {"schemes.$[item].properties.$[property].addresses": {
-                                       "chain": request.POST["chain"],
-                                       "amount": 0.0,
-                                       "update_time": time_now(),
-                                       "withdrawAmount": 0.0,
-                                       "books": [{"tag": request.POST["tag"], "address": request.POST["address"]}]
-                                   }
-                                   }},
+                                   {'$addToSet':
+                                        {"schemes.$[item].properties.$[property].addresses": new_chain
+                                         #         {
+                                         #     "chain": request.POST["chain"],
+                                         #     "amount": 0.0,
+                                         #     "update_time": time_now(),
+                                         #     "withdrawAmount": 0.0,
+                                         #     "books": [{"tag": request.POST["tag"], "address": request.POST["address"]}]
+                                         # }
+                                         }
+                                    },
                                    upsert=True,
                                    array_filters=[
                                        {"item.id": float(request.POST["id"])},
@@ -295,6 +400,47 @@ def addAddressBook(request):
                            )  # 用addToSet以便避免添加重复数据
     return json_wrap(output)
 
+@check_login
+@check_parameters(["chain", "coin", "id", "address", "tag"])
+def deleteAddressBook(request):
+    output = {"status": 200, "msg": "Address has been successfully deleted!"}
+    query = list(myauths.find({"username": request.session["username"],
+                               "schemes": {  # 多级嵌套写法！
+                                   "$elemMatch": {
+                                       "properties": {
+                                           "$elemMatch": {
+                                               "symbol": request.POST["coin"],
+                                               "addresses.chain": request.POST["chain"],
+                                           }
+                                       },
+                                       "id": float(request.POST["id"]),
+                                   }
+                               }}, {"username": 1, "schemes.id": 1, "schemes.properties":1,"_id": 0}))
+    # 查询id方案中用户的chainAddresses数组中现在是否存在name为chain这个对象，不存在返回空数组
+    if len(query) == 0:  # 如果查到了这个chain的存在，则直接添加，否则查币和链存不存在,不存在返回错误，存在的话向用户数据里添加信息
+        output = {"status": 500, "msg": "Sorry, we cannot find specified coin or chain info!"}
+    else:  # 查到了chain，直接添加
+        try:
+            # properties = list(filter(lambda x: x["id"] == float(request.POST["id"]), query[0]["schemes"]))[0][
+            #     "properties"]
+            # addresses = list(filter(lambda x: x["symbol"] == request.POST["coin"],properties))[0]["addresses"]
+            myauths.update_one({"username": request.session['username']},
+                               {'$pull': {"schemes.$[item].properties.$[property].addresses.$[address].books": {
+                                   "tag": request.POST["tag"], "address": request.POST["address"]}}},
+                               upsert=True,
+                               array_filters=[
+                                   {"item.id": float(request.POST["id"])},
+                                   {"property.symbol": request.POST["coin"]},
+                                   {"address.chain": request.POST["chain"]},
+                               ]
+                               )
+
+        except:
+            output = {"status": 500, "msg": "Sorry, we cannot find specified address info!"}
+
+
+    return json_wrap(output)
+
 
 @check_login
 @check_parameters(["selected", 'desc'])
@@ -307,42 +453,12 @@ def addScheme(request):
     new_scheme_name = request.POST['selected']
     if request.POST['selected'] == "2":
         new_scheme_name = request.POST['desc']
-    new_scheme = {
-        "id": new_scheme_id,
-        "name": new_scheme_name,
-        "create_time": time_now(),
-        "properties": [
-            {
-                "symbol": "USDT",
-                "addresses": [
-                    {
-                        "chain": "BEP20(BSC)",
-                        "amount": 0.0,
-                        "withdrawAmount": 0.0,  # 今天已经占用的提币额度
-                        "books": [],  # 记录的地址簿
-                        "update_time": time_now()
-                    }
-                ]
-            }
-        ],
-        "chainAddresses": [
-        ],
-        "propertyLogs": [
-        ],
-        "chargeLogs": [
-        ],
-        "withdrawLogs": [
-        ],
-        "investPlans": {
-            "update_time": time_now(),
-            "contents": [
-                {
-                    "coin": "USDT",
-                    "percentage": 100.0
-                }
-            ]
-        }
-    }
+    new_scheme = copy.deepcopy(scheme_template)
+    new_scheme["id"] = new_scheme_id
+    new_scheme["name"] = new_scheme_name
+    new_scheme["create_time"] = time_now()
+    new_scheme["properties"][0]["addresses"][0]["update_time"] = time_now()
+    new_scheme["investPlans"][0]["create_time"] = time_now()
     myauths.update_one({"username": request.session['username']},
                        {'$push': {"schemes": new_scheme}},
                        upsert=False,

@@ -52,6 +52,9 @@ urlpatterns = [
     path_c('waitSchemeLogs', scheme.waitSchemeLogs),
     path_c('withdrawCoin', scheme.withdrawCoin),
     path_c('addAddressBook', scheme.addAddressBook),
+    path_c('deleteAddressBook', scheme.deleteAddressBook),
+    path_c('getInvestPlan', scheme.getInvestPlan),
+    path_c('newInvestPlan', scheme.newInvestPlan),
 ]
 
 handler404 = view.S04
