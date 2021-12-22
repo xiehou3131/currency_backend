@@ -85,7 +85,7 @@ def getInvestPlan(request):
 @check_login
 @check_parameters(["plan","rebalance","id"])
 def newInvestPlan(request):
-    if not request.POST['rebalance']: # 如果不是rebalance
+    if request.POST['rebalance'] == "false": # 如果不是rebalance
         plan = json.loads(request.POST["plan"])
         userSchemeData = list(myauths.find({"username": request.session["username"]},
                                            {"schemes.id": 1, "username": 1, "schemes.name": 1,
