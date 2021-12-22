@@ -152,6 +152,8 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True # 严格要求使用https协议传输
 SECURE_HSTS_PRELOAD = True # HSTS为
 SECURE_HSTS_SECONDS = 60
 SECURE_CONTENT_TYPE_NOSNIFF = True # 防止浏览器猜测资产的内容类型
+SESSION_COOKIE_AGE = 1209600             # Session的cookie失效日期（2周）（数字为秒数）（默认）
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # 是否关闭浏览器使得Session过期（默认）
 
 CORS_ORIGIN_WHITELIST = ()
  

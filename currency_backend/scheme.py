@@ -83,46 +83,61 @@ def getInvestPlan(request):
     return json_wrap({"status": 200, "data": investPlan}, no_log=True)
 
 @check_login
-@check_parameters(["plan"])
+@check_parameters(["plan","rebalance","id"])
 def newInvestPlan(request):
-    plan = json.loads(request.POST["plan"])
-    userSchemeData = list(myauths.find({"username": request.session["username"]},
-                                       {"schemes.id": 1, "username": 1, "schemes.name": 1,
-                                        "schemes.investStatus": 1}))
-    investStatus = list(filter(lambda x: x["id"] == float(request.POST["id"]), userSchemeData[0]["schemes"]))[0][
-        "investStatus"]
-    if investStatus != "normal":
-        return json_wrap({"status": 500,
-                          "msg": "We are now processing your last invest plan, please wait until it is done."})
-    totalPercentage = 0
-    print(plan)
-    for coinInfo in plan:
-        try:
-            coinInfo["percentage"] = float(coinInfo["percentage"])
-            if coinInfo["percentage"] < 0 or coinInfo["percentage"] >100:
+    if not request.POST['rebalance']: # 如果不是rebalance
+        plan = json.loads(request.POST["plan"])
+        userSchemeData = list(myauths.find({"username": request.session["username"]},
+                                           {"schemes.id": 1, "username": 1, "schemes.name": 1,
+                                            "schemes.investStatus": 1}))
+        investStatus = list(filter(lambda x: x["id"] == float(request.POST["id"]), userSchemeData[0]["schemes"]))[0][
+            "investStatus"]
+        if investStatus != "normal":
+            return json_wrap({"status": 500,
+                              "msg": "We are now processing your last invest plan, please wait until it is done."})
+        totalPercentage = 0
+        print(plan)
+        for coinInfo in plan:
+            try:
+                coinInfo["percentage"] = float(coinInfo["percentage"])
+                if coinInfo["percentage"] < 0 or coinInfo["percentage"] >100:
+                    return json_wrap({"status": 500,
+                                      "msg": "Parameter error, percentage cannot be smaller than 0 or bigger than 100!"})
+                else:
+                    totalPercentage += coinInfo["percentage"]
+            except:
                 return json_wrap({"status": 500,
-                                  "msg": "Parameter error, percentage cannot be smaller than 0 or bigger than 100!"})
-            else:
-                totalPercentage += coinInfo["percentage"]
-        except:
+                                  "msg": "Parameter error, percentage is not a float!"})
+            theCoin = list(coin.find({"symbol": coinInfo["coin"]}))
+            if len(theCoin) == 0:
+                return json_wrap({"status": 500,
+                                  "msg": "Sorry, we cannot find the specified coin %s!" % coinInfo["coin"]})
+        if totalPercentage!= 100:
             return json_wrap({"status": 500,
-                              "msg": "Parameter error, percentage is not a float!"})
-        theCoin = list(coin.find({"symbol": coinInfo["coin"]}))
-        if len(theCoin) == 0:
-            return json_wrap({"status": 500,
-                              "msg": "Sorry, we cannot find the specified coin %s!" % coinInfo["coin"]})
-    if totalPercentage!= 100:
-        return json_wrap({"status": 500,
-                          "msg": "Parameter error, percentages do not add up to 100!"})
+                              "msg": "Parameter error, percentages do not add up to 100!"})
 
-    myauths.update_one({"username": request.session['username']},
-                       {'$addToSet': {"schemes.$[item].investPlans": {"create_time":time_now(),"contents":plan}
-                                      },"$set":{"schemes.$[item].investStatus":"processing"}},
-                       upsert=True,
-                       array_filters=[
-                           {"item.id": float(request.POST["id"])},
-                       ]
-                       )
+        myauths.update_one({"username": request.session['username']},
+                           {'$addToSet': {"schemes.$[item].investPlans": {"create_time":time_now(),"contents":plan}
+                                          },"$set":{"schemes.$[item].investStatus":"processing"}},
+                           upsert=True,
+                           array_filters=[
+                               {"item.id": float(request.POST["id"])},
+                           ]
+                           )
+    else: # 如果是rebalance，只需要更改个投资状态
+        myauths.update_one({"username": request.session['username']},
+                           {"$set": {"schemes.$[item].investStatus": "processing"}},
+                           upsert=True,
+                           array_filters=[
+                               {"item.id": float(request.POST["id"])},
+                           ]
+                           )
+    try:
+        # x = requests.get('http://currency.naibo.wang:8081/updateInvestPlan?username=%s&id=%d'%(request.session['username'],float(request.POST['id'])),timeout=10)
+        time.sleep(1)
+    except requests.exceptions.Timeout as e:
+        return json_wrap({"status": 500,
+                          "msg": "Sorry, we cannot process your invest now!"})
     return json_wrap({"status": 200, "msg": "Invest Plan has been successfully submitted, please wait for our platform to adjust your account!"})
 
 @check_login
@@ -221,7 +236,7 @@ def withdrawCoin(request):
     try:
         # 请求李远服务器的等待时间最多只有10秒，超出后必须返回数据，哪怕没有最新的log，注意10秒不是那边服务器的处理时间，是从发送请求到处理请求全部的等待时间，所以如果后台处理时间为1秒，则整个过程至少需要3秒
         # r = requests.get('http://currency.naibo.wang:8081/currency_backend/testDelay?type='+type, timeout=10)
-        # x = requests.post('http://currency.naibo.wang:8081/currency_backend/withdraw', data=params,timeout=10)
+        # x = requests.post('http://currency.naibo.wang:8081/currency_backend/', withdrawdata=params,timeout=10)
         time.sleep(1)
     except requests.exceptions.Timeout as e:
         output["status"] = 500
@@ -237,14 +252,14 @@ def getSchemeLogs(request):
     type = request.POST["type"]
     temp = {}
     output = {}
-    if pagination["firstInvoke"]:
-        try:
-            # 请求李远服务器的等待时间最多只有10秒，超出后必须返回数据，哪怕没有最新的log，注意10秒不是那边服务器的处理时间，是从发送请求到处理请求全部的等待时间，所以如果后台处理时间为1秒，则整个过程至少需要3秒
-            # r = requests.get('http://currency.naibo.wang:8081/currency_backend/testDelay?type='+type, timeout=10)
-            time.sleep(1)
-        except requests.exceptions.Timeout as e:
-            output["invokeStatus"] = "timeout"
-        # time.sleep(3)
+    # if pagination["firstInvoke"]:
+    #     try:
+    #         # 请求李远服务器的等待时间最多只有10秒，超出后必须返回数据，哪怕没有最新的log，注意10秒不是那边服务器的处理时间，是从发送请求到处理请求全部的等待时间，所以如果后台处理时间为1秒，则整个过程至少需要3秒
+    #         # r = requests.get('http://currency.naibo.wang:8081/currency_backend/testDelay?type='+type, timeout=10)
+    #         time.sleep(0)
+    #     except requests.exceptions.Timeout as e:
+    #         output["invokeStatus"] = "timeout"
+    #     # time.sleep(3)
     if type == "deposit":
         schemeLogs = list(myauths.find({"username": request.session["username"]},
                                        {"username": 1,

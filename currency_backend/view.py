@@ -35,7 +35,7 @@ def check_login(f):
         if request.session.get('is_login') == '1':
             return f(request, *arg, **kwargs)
         else:
-            return HttpResponse(json.dumps({"status": 302, "info": "Not logged in!"}),
+            return NoLogHTTPResponse(json.dumps({"status": 302, "info": "Not logged in!"}),
                                 content_type="application/json")
 
     return inner
@@ -213,7 +213,7 @@ def login(request):
             request.session["nickname"] = item["nickname"]
             request.session["role"] = item["role"]
             request.session["profile"] = item["profile"]
-            request.session.set_expiry(1200)
+            # request.session.set_expiry(1200)
     return NoRequestLogHTTPResponse(json.dumps(result), content_type="application/json")
 
 

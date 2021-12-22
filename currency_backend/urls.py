@@ -43,7 +43,7 @@ urlpatterns = [
     path_c('getSchemeMenu', scheme.getSchemeMenu),
     path_c('getSchemeOverview', scheme.getSchemeOverview),
     path_c('addScheme', scheme.addScheme),
-    path_c('getCoinInfo', rate.get_coin_info),
+    path_c('getCoinInfo', rate.getCoinInfo),
     path_c('getSchemeChart', scheme.getSchemeChart),
     path_c('getSchemeAccount', scheme.getSchemeAccount),
     path_c('getSchemeLogs', scheme.getSchemeLogs),

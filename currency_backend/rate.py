@@ -24,7 +24,7 @@ client = InfluxDBClient(
 write_api = client.write_api(write_options=SYNCHRONOUS)
 query_api = client.query_api()
 
-def get_coin_info(request):
+def getCoinInfo(request):
     q_str = '''from (bucket: "{}") |> range(start: -15m)'''.format(
         bucket_trades)
     q_str += "|> filter(fn: (r) =>"
@@ -65,7 +65,7 @@ def get_coin_info(request):
 
     except Exception as e:
         print(e)
-    return json_wrap({"status":200,"data":data},no_response=True)
+    return json_wrap({"status":200,"data":data},no_log=True)
 
 if __name__ == "__main__":
     get_rate()
