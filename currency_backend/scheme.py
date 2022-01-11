@@ -247,10 +247,10 @@ def withdrawCoin(request):
             "address":params["address"],
             "quantity":float(params["quantity"])
         }
-        print(params)
+        # print(params)
         # r = requests.get('http://currency.naibo.wang:8081/currency_backend/testDelay?type='+type, timeout=10)
         r = requests.post('http://chain.naibo.wang/withdraw/', data=params,timeout=15)
-        print(r.text)
+        # print(r.text)
         if r.text == "true":
             output["status"] = 200
             output["msg"] = "Withdraw Success!"
