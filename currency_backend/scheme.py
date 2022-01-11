@@ -133,8 +133,13 @@ def newInvestPlan(request):
                            ]
                            )
     try:
-        # x = requests.get('http://currency.naibo.wang:8081/updateInvestPlan?username=%s&id=%d'%(request.session['username'],float(request.POST['id'])),timeout=10)
-        time.sleep(1)
+        params = {
+            "username": request.session["username"],
+            "id": float(request.POST["id"]),
+        }
+        print(params)
+        r = requests.get('http://chain.naibo.wang/updateInvestPlan',params=params,timeout=10)
+        print(r.text)
     except requests.exceptions.Timeout as e:
         return json_wrap({"status": 500,
                           "msg": "Sorry, we cannot process your invest now!"})
@@ -232,12 +237,26 @@ def withdrawCoin(request):
     output = {"status": 200, "msg": "Withdraw request has been successfully submitted and being processed now!"}
     params = json.loads(request.POST["params"])
     params["username"] = request.session["username"]
-    print(params)
     try:
         # 请求李远服务器的等待时间最多只有10秒，超出后必须返回数据，哪怕没有最新的log，注意10秒不是那边服务器的处理时间，是从发送请求到处理请求全部的等待时间，所以如果后台处理时间为1秒，则整个过程至少需要3秒
+        params = {
+            "username": params["username"],
+            "id": float(params["id"]),
+            "chain": params["chain"],
+            "coin": params["coin"],
+            "address":params["address"],
+            "quantity":float(params["quantity"])
+        }
+        print(params)
         # r = requests.get('http://currency.naibo.wang:8081/currency_backend/testDelay?type='+type, timeout=10)
-        # x = requests.post('http://currency.naibo.wang:8081/currency_backend/', withdrawdata=params,timeout=10)
-        time.sleep(1)
+        r = requests.post('http://chain.naibo.wang/withdraw/', data=params,timeout=15)
+        print(r.text)
+        if r.text == "true":
+            output["status"] = 200
+            output["msg"] = "Withdraw Success!"
+        else:
+            output["status"] = 500
+            output["msg"] = "Sorry, we cannot process your withdraw request now!"
     except requests.exceptions.Timeout as e:
         output["status"] = 500
         output["msg"] = "Sorry, we cannot process your withdraw request now!"
@@ -305,9 +324,14 @@ def waitGetSchemeAddress(request):
     # print(query)
     if len(query) == 0:  # 如果账户已经有这个chain的address了，就不需要向后台查询了，否则向后台查询
         try:
-            # r = requests.get('http://currency.naibo.wang:8081/currency_backend/testDelay', timeout=10)
-            time.sleep(1)
-            output["address"] = "New generated address"
+            params={
+                "username":request.session["username"],
+                "id":float(request.POST["id"]),
+                "chain":request.POST["chain"],
+            }
+            r = requests.get('http://chain.naibo.wang/getAddress', params=params,timeout=10)
+            # time.sleep(1)
+            output["address"] = r.text
         except requests.exceptions.Timeout as e:
             output["invokeStatus"] = "timeout"
             output["address"] = "Sorry, we cannot get your chain address now"

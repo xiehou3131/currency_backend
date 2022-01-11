@@ -28,7 +28,7 @@ if __name__ == '__main__':
     # next_day = date + datetime.timedelta(days=1) # 日期加1天
     # last_day = date + datetime.timedelta(days=-1)  # 日期减1天
     startDate = date - relativedelta(years=3) # 添加3年的数据
-    startDate = date - relativedelta(days=3)  # 添加3天的数据
+    # startDate = date - relativedelta(days=3)  # 添加3天的数据
     # test.insert_one({"time": date, "value": random.uniform(0, 100000)})
     # print(date_format,next_day,last_day)
 
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     dates = []
     while (date - startDate).days != -1:  # 插入数据到指定日期，比如一个月之前
         print(i, startDate, date - startDate, random.uniform(0, 100000))
-        dates.append({"time": startDate, "value": 155000 + random.uniform(-10000, 10000)})
+        dates.append({"time": startDate, "value": 147000 + random.uniform(-10000, 10000)})
         startDate = startDate + datetime.timedelta(hours=2)
         # time.sleep(0.1)
         i += 1
