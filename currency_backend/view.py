@@ -309,8 +309,8 @@ def getCaptcha(request):
                       'Captcha from Currency Market', """<html>
   <head></head>
   <body>
-    <p>Hello, your captcha is: <strong>%s</strong>, please enter in 5 minutes.
-    <br>This is an automatically generated email, please do not respond. :)
+    <p>Hi, welcome to Currency Market! Your captcha is: <strong>%s</strong>, please enter in 5 minutes.
+    <br>This is an automatically generated email, please do not respond :)
     </p>
   </body>
 </html>""" % cache.get(request.POST['username']  # 三个双引号保证不需要换行标记\就可以实现多行输出的效果，不然每行最后都需要加一个\
