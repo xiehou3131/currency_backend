@@ -148,7 +148,7 @@ def newInvestPlan(request):
 @check_login
 @check_parameters(["id", 'range'])
 def getSchemeChart(request):
-    frequency = 12  # 每天插入的日志条数
+    frequency = 1200  # 每天插入的日志条数
     timeRange = int(request.POST["range"])
     date = datetime.datetime.utcnow()
     if timeRange < 27:
@@ -167,12 +167,12 @@ def getSchemeChart(request):
     for scheme in schemeChartLogs['schemes']:  # 输出指定scheme的信息
         if scheme["id"] == float(request.POST['id']):
             propertyLogs = scheme["propertyLogs"]
-    propertyLogs.reverse()
+    propertyLogs.reverse() # 从新往旧排序
     outputLogs = []
 
     dateCursor = ""  # 数据游标
     for log in propertyLogs:
-        if (log["time"] - startDate).days >= 0:
+        if (log["time"] - startDate).days >= 0: # 找日志直到时间差为-1，即日志时间早于startDate停止，startDate是最早的日志时间
             if timeRange <= 31:  # 一个月之内，全部打印
                 outputLogs.append(log)
             elif timeRange < 400:  # 超过一个月少于两年，每隔一天打印一次数据
