@@ -200,7 +200,7 @@ def getSchemeAccount(request):
     schemeChartLogs = list(myauths.find({"username": request.session["username"]},
                                         {"username": 1, "schemes.properties": 1,
                                          "schemes.propertyLogs": {
-                                             "$slice": [-20, 20]
+                                             "$slice": [-2000, 2000]
                                          },
                                          "schemes.id": 1,"schemes.investStatus":1, "schemes.name": 1, "_id": 0}))[
         0]  # 得到用户所有方案的propertyLogs，按数量算好的
