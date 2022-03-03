@@ -64,6 +64,7 @@ def getCoinInfo(request):
         data = {"prices": prices, "time": row.values["_time"],"coins":coins}
 
     except Exception as e:
+        data = {"prices": {"USDT":1.0}, "time": time_now(), "coins": coins}
         print(e)
     return json_wrap({"status":200,"data":data},no_log=True)
 
