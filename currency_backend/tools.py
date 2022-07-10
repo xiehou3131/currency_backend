@@ -8,6 +8,8 @@ import json,re
 from base64 import b64decode, b16decode
 from django.conf import settings
 
+DAY = 86400 
+
 
 # 不打log的情况
 class NoLogHTTPResponse(HttpResponse):
@@ -47,6 +49,9 @@ def time_now():
     obj = utc_now
     obj = datetime(obj.year, obj.month, obj.day, obj.hour, obj.minute, obj.second, obj.microsecond)
     return obj
+
+def timestamp_now():
+    return int(time.time())
 
 
 def get_time_int():

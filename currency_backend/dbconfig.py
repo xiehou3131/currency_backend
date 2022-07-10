@@ -11,12 +11,35 @@ from dateutil.relativedelta import relativedelta
 
 from currency_backend.tools import time_now
 
-myclient = pymongo.MongoClient('mongodb://currency:Qw123456789@localhost:27017/', connect=False)
+# myclient = pymongo.MongoClient('mongodb://currency:Qw123456789@localhost:27017/', connect=False)
+myclient = pymongo.MongoClient('mongodb://localhost:27017/', connect=False)
 mydb = myclient['currency']
 myauths = mydb["userInfo"]
 logs = mydb["logs"]
 coin = mydb["coinInfo"]
 test = mydb["test"]
+
+plans = mydb["plans"]
+
+scheme_template = {
+    "id": 0,
+    "username": "",
+    "create_time": "",
+    "start_time": "",
+    "invest_cycle": 0, # 以秒为单位的timestamp
+    "invest_amount": 0,
+}
+
+user_template = {
+    "id" : "",
+    "username" : "xiehou_1",
+    "pswd" : "123456",
+    "nickname" : "xiehou_1",
+    "role" : "",
+    "profile" : "",
+    "status" : true,
+    "btc_amount": 0,
+}
 
 
 

@@ -201,7 +201,8 @@ def login(request):
         result = {"status": 404, "msg": "User not found!"}
     else:
         item = r[0]
-        password = decrypt_message(request.POST['pass'])
+        # password = decrypt_message(request.POST['pass'])
+        password = request.POST['pass']
         if item["pswd"] != password:
             result = {"status": 201, "msg": "Wrong password!"}
         elif not item["status"]:
